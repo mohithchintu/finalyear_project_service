@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -10,37 +9,33 @@ type Message struct {
 	Text string `json:"text"`
 }
 
-func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello, World!")
-	})
-
-	http.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+func Handler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		if r.URL.Path == "/get" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("GET request received"))
 			return
 		}
-		fmt.Fprintf(w, "GET request received")
-	})
-
-	http.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var msg Message
-		err := json.NewDecoder(r.Body).Decode(&msg)
-		if err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			return
-		}
-
-		response := fmt.Sprintf("POST request received with message: %s", msg.Text)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
-	})
-
-	fmt.Println("Server is running on port 8080...")
-	http.ListenAndServe(":8080", nil)
+		w.Write([]byte("Hello, World!"))
+	case http.MethodPost:
+		if r.URL.Path == "/post" {
+			var msg Message
+			err := json.NewDecoder(r.Body).Decode(&msg)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Invalid request body"))
+				return
+			}
+			response := map[string]string{"message": "POST request received with message: " + msg.Text}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte("Invalid request method"))
+	}
 }
