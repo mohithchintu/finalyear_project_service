@@ -1,41 +1,37 @@
-package handler
+package main
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
+
+	"github.com/mohithchintu/finalyear_project_service/handlers"
 )
 
-type Message struct {
-	Text string `json:"text"`
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
-func Handler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		if r.URL.Path == "/get" {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("GET request received"))
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hello, World!"))
-	case http.MethodPost:
-		if r.URL.Path == "/post" {
-			var msg Message
-			err := json.NewDecoder(r.Body).Decode(&msg)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("Invalid request body"))
-				return
-			}
-			response := map[string]string{"message": "POST request received with message: " + msg.Text}
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		w.Write([]byte("Invalid request method"))
-	}
+func main() {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", handlers.TestHandler)
+	mux.HandleFunc("/devices", handlers.CreateDeviceHandler)
+	mux.HandleFunc("/sss", handlers.SSSHandler)
+	mux.HandleFunc("/authenticate", handlers.ProcessDevicesHandler)
+
+	handler := enableCORS(mux)
+
+	fmt.Println("Server is running on port 8080")
+	http.ListenAndServe(":8080", handler)
 }
